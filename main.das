@@ -127,17 +127,26 @@ def pop_undo()
         snd_step_back |> play_sound(random_float(seed)*0.1+0.5, random_float(seed)*0.5+0.5)
 
 
+
+var img_hero : ImageHandle
+var hero_pos : float2
+var hero_vel : float2
+
 // 'initialize' runs once when game starts and every hot-reload
 [export]
 def initialize(is_hard_reload: bool)
-    set_window_title("sokoban")
+    set_window_title("best game winner")
     level_text = replace(level_text,"\n","")
 
-    var xupscale = get_desktop_width()/480
-    var yupscale = get_desktop_height()/270
+    var xupscale = get_desktop_width()/1920
+    var yupscale = get_desktop_height()/1080
     upscale = min(xupscale,yupscale)
-    set_resolution(480, 270)
+    set_resolution(1920, 1080)
     set_rendering_upscale(upscale)
+
+    img_hero = create_managed_image("hero.png")
+    hero_pos = float2(500.f, 500.f)
+    hero_vel = float2(0.f, 0.f)
 
     man_vel = 10.f;
     sokoban_pos = int2(1, 1)
@@ -235,6 +244,31 @@ def initialize(is_hard_reload: bool)
 def act(dt: float)
     if get_key(VK_ESCAPE)
         schedule_quit_game()
+
+    var floor_y = 1080.f - 300.f
+    if hero_pos.y < floor_y
+        hero_pos.y = min(floor_y, hero_pos.y + hero_vel.y * dt + 9.8 * dt * dt)
+        hero_vel.y += 150.0*9.8 * dt
+    else
+        if hero_vel.y < 0.0
+            hero_pos += hero_vel * dt
+        else
+            hero_pos.y = floor_y
+            hero_vel.y = 0.0
+
+    hero_pos.x = hero_pos.x + hero_vel.x * dt
+
+    hero_vel.x = hero_vel.x * 0.5
+    if get_key(VK_A) || get_key(VK_LEFT)
+        hero_vel.x = -150.0*5.0
+    if get_key(VK_D) || get_key(VK_RIGHT)
+        hero_vel.x = 150.0*5.0
+    if get_key(VK_W) || get_key(VK_UP)
+        if hero_pos.y >= floor_y
+            hero_vel.y = -150.0*9.8
+
+
+
 
     var remaining_dt = dt
     var prev_move_dir = sokoban_next_pos - sokoban_pos
@@ -344,5 +378,9 @@ def draw
     set_font_size(12)
     var text = "Управление: WSAD U"
     text_out(get_screen_width()/2 - int(get_text_size(text).x)/2, get_screen_height()-15, text, make_color32(255,255,255))
+
+
+    enable_alpha_blend()
+    img_hero |> draw_image(hero_pos.x, hero_pos.y)
 
     return
