@@ -1,0 +1,8 @@
+# vim swap files
+*.swp
+
+# project files
+.vscode
+
+#final artefacts
+log.txt
