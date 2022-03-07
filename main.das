@@ -189,7 +189,7 @@ def act(dt: float)
         units[0].is_vertical_slowdown = true
 
     if shoot_dir.x == 0.f && shoot_dir.y == 0.f
-        shoot_dir.x = 1.f
+        shoot_dir = float2(units[0].is_face_right ? 1.f : -1.f, 0.f)
     shoot_dir = normalize(shoot_dir)
 
     if get_key(VK_N)
