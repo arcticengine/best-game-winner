@@ -13,6 +13,7 @@ struct Unit
     is_hero : bool
     is_face_right : bool
     is_lie : bool
+    is_vertical_slowdown : bool
     pos : float2
     vel : float2
     frame_count : int
@@ -58,6 +59,7 @@ def add_unit(pos: float2)
     u.is_enabled = true
     u.is_face_right = true
     u.is_lie = false
+    u.is_vertical_slowdown = false
     u.pos = pos
     u.vel = float2(0.f, 0.f)
     u.frame_count = 1
@@ -120,7 +122,10 @@ def move_unit(var u: Unit&; dt:float)
     
     if u.pos.y < floor_y
         u.pos.y = min(floor_y, u.pos.y + u.vel.y * dt + 9.8 * dt * dt)
-        u.vel.y += 150.0*9.8 * dt
+        if u.is_vertical_slowdown && u.vel.y < 0.f
+            u.vel.y += 150.0*9.8 * dt * 2.f
+        else
+            u.vel.y += 150.0*9.8 * dt
     else
         if u.vel.y < 0.0
             u.pos += u.vel * dt
@@ -179,6 +184,9 @@ def act(dt: float)
     if get_key(VK_M)
         if units[0].pos.y >= floor_y
             units[0].vel.y = -150.0*9.8
+            units[0].is_vertical_slowdown = false
+    else
+        units[0].is_vertical_slowdown = true
 
     if shoot_dir.x == 0.f && shoot_dir.y == 0.f
         shoot_dir.x = 1.f
