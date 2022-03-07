@@ -8,7 +8,7 @@ var level_text = "
 # ##   ###########          #########          #
 "
 
-struct Unit 
+struct Unit
     is_enabled : bool
     is_hero : bool
     pos : float2
@@ -17,7 +17,14 @@ struct Unit
     frame_idx : int
     time_in_cur_frame : float
 
+struct Bullet
+    is_enabled : bool
+    is_heroes : bool
+    pos : float2
+    vel : float2
+
 var units : array<Unit>
+var bullets : array<Bullet>
 
 var snd_step : SoundHandle
 
@@ -33,6 +40,8 @@ var time_between_steps = 0.1f
 
 var time_since_step : float
 
+var is_prev_trigger_pressed : bool
+
 def add_unit(pos: float2)
     var u : Unit
     u.is_hero = false
@@ -43,6 +52,15 @@ def add_unit(pos: float2)
     u.frame_idx = 0
     u.time_in_cur_frame = 0.f
     units |> push(u)
+    return
+
+def add_bullet(is_heroes: bool; pos: float2; vel: float2)
+    var b : Bullet
+    b.is_enabled = true
+    b.is_heroes = is_heroes
+    b.pos = pos
+    b.vel = vel
+    bullets |> push(b)
     return
 
 // 'initialize' runs once when game starts and every hot-reload
@@ -73,6 +91,8 @@ def initialize(is_hard_reload: bool)
     units[0].is_hero = true;
     units[0].frame_count = 3;
     add_unit(float2(1000.f, 500.f))
+
+    is_prev_trigger_pressed = false
 
     return
 
@@ -108,18 +128,36 @@ def move_unit(var u: Unit&; dt:float)
 def act(dt: float)
     if get_key(VK_ESCAPE)
         schedule_quit_game()
-
+    var shoot_dir = float2(0.f, 0.f)
     var do_step = false
     units[0].vel.x = units[0].vel.x * 0.5
     if get_key(VK_A) || get_key(VK_LEFT)
+        shoot_dir.x = -1.f
         units[0].vel.x = -150.0*5.0
         do_step = units[0].vel.y == 0.f
     if get_key(VK_D) || get_key(VK_RIGHT)
+        shoot_dir.x = 1.f
         units[0].vel.x = 150.0*5.0
         do_step = units[0].vel.y == 0.f
     if get_key(VK_W) || get_key(VK_UP)
+        shoot_dir.y = -1.f
+    if get_key(VK_S) || get_key(VK_DOWN)
+        shoot_dir.y = 1.f
+    if get_key(VK_M)
         if units[0].pos.y >= floor_y
             units[0].vel.y = -150.0*9.8
+
+    if shoot_dir.x == 0.f && shoot_dir.y == 0.f
+        shoot_dir.x = 1.f
+    shoot_dir = normalize(shoot_dir)
+
+    if get_key(VK_N)
+        if !is_prev_trigger_pressed
+            is_prev_trigger_pressed = true
+            var bullet_vel = 1500.f * shoot_dir
+            add_bullet(true, units[0].pos + float2(48.f, -130.f), bullet_vel + float2(units[0].vel.x, 0.f))
+    else
+        is_prev_trigger_pressed = false
 
     for u in units    
         move_unit(u, dt)
@@ -127,6 +165,35 @@ def act(dt: float)
         if u.time_in_cur_frame >= frame_duration
             u.time_in_cur_frame = 0.f
             u.frame_idx = (u.frame_idx + 1) % u.frame_count
+
+    var screen_size = float2(float(get_screen_width()), float(get_screen_height()))
+    
+    var i : int = int(length(bullets))  - 1
+    while i >= 0
+        bullets[i].pos += bullets[i].vel * dt
+        var do_remove = false
+        if bullets[i].is_heroes
+            var unit_idx = 0
+            while unit_idx < length(units)
+                var u = units[unit_idx]
+                // todo: collisions with enemies
+                unit_idx++
+        else
+            // todo: collisions with the hero
+            var u = units[0]
+
+        if bullets[i].pos.x > screen_size.x && bullets[i].vel.x > 0.f
+            do_remove = true
+        elif bullets[i].pos.y > screen_size.y && bullets[i].vel.y > 0.f
+            do_remove = true
+        elif bullets[i].pos.x < 0.f && bullets[i].vel.x < 0.f
+            do_remove = true
+        elif bullets[i].pos.y < 0.f && bullets[i].vel.y < 0.f
+            do_remove = true
+        if do_remove
+            bullets[i] = bullets[length(bullets) - 1]
+            pop(bullets)
+        i--
 
     time_since_step += dt
     if do_step && time_since_step >= time_between_steps
@@ -142,9 +209,9 @@ var hero_frame_count = 2
 var frame_duration = 1.f / 15.f
 [export]
 def draw
-    set_font_size(12)
-    var text = "Controls: WAD"
-    text_out(get_screen_width()/2 - int(get_text_size(text).x)/2, get_screen_height()-15, text, make_color32(255,255,255))
+    set_font_size(48)
+    var text = "Controls: WSAD NM"
+    text_out(get_screen_width()/2 - int(get_text_size(text).x)/2, get_screen_height()-60, text, make_color32(255,255,255))
 
     enable_alpha_blend()
 
@@ -163,4 +230,9 @@ def draw
         else
             var img = img_tree
             img |> draw_image(u.pos.x, u.pos.y - float(img.height))
+
+    for b in bullets
+        if b.is_enabled
+            fill_circle(b.pos.x, b.pos.y, 10.f, make_color32(255,32,32))
+            fill_circle(b.pos.x, b.pos.y, 7.f, make_color32(32,32,255))
     return
