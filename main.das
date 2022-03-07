@@ -1,6 +1,7 @@
 options debugger            // uncomment for debug in VS Code
 require daslib/debug        // uncomment for debug in VS Code
 require daslib/media
+require map
 
 var level_text = "
 ########         ############       ############
@@ -12,6 +13,7 @@ struct Unit
     is_hero : bool
     pos : float2
     vel : float2
+    frame_count: int = 1
 
 var units : array<Unit>
 
@@ -41,12 +43,14 @@ def add_unit(pos: float2)
 // 'initialize' runs once when game starts and every hot-reload
 [export]
 def initialize(is_hard_reload: bool)
+    test_map()
+
     set_window_title("best game winner")
     level_text = replace(level_text,"\n","")
 
     set_resolution(1920, 1080)
 
-    img_hero = create_managed_image("hero.png")
+    img_hero = create_managed_image("hero_ss_test.png")
     img_tree = create_managed_image("tree.png")
     
     time_since_step = 0.f
@@ -84,6 +88,15 @@ def move_unit(var u: Unit&; dt:float)
 
     u.pos.x = u.pos.x + u.vel.x * dt
 
+// use functions?
+// def play_hero_idle_animation()
+
+// or use animation state machine?
+// enum HeroAnimationStates
+//     idle
+//     run
+//     walk
+
 // this function is called to update game data,
 // dt - time elapsed since the previous update (in seconds)
 [export]
@@ -116,8 +129,10 @@ def act(dt: float)
 
 // this function will be called every frame after 'act',
 // you can draw anything in this function
+var hsid = 0
+var hero_framenum = 2
 [export]
-def draw   
+def draw
     set_font_size(12)
     var text = "Controls: WAD"
     text_out(get_screen_width()/2 - int(get_text_size(text).x)/2, get_screen_height()-15, text, make_color32(255,255,255))
@@ -125,9 +140,19 @@ def draw
     enable_alpha_blend()
 
     for u in units
+        var frame_width = 122
+        var frame_height = 256
+        var vertical_num = 1
+        let rect = float4(float(frame_width*hsid),
+                        float(0),
+                        float(frame_width),
+                        float(frame_height))
+        
         var img = u.is_hero ? img_hero : img_tree
-        img |> draw_image(u.pos.x, u.pos.y - float(img.height))
+        img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
 
-    img_hero |> draw_image(hero_pos.x, hero_pos.y - float(img_hero.height))
-
+    // img_hero |> draw_image_region(hero_pos.x, hero_pos.y - float(img_hero.height), rect)
+    hsid++
+    if hsid > hero_framenum
+        hsid = 0
     return
