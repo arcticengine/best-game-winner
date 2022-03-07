@@ -11,6 +11,8 @@ var level_text = "
 struct Unit
     is_enabled : bool
     is_hero : bool
+    is_face_right : bool
+    is_lie : bool
     pos : float2
     vel : float2
     frame_count : int
@@ -30,7 +32,15 @@ var snd_step : SoundHandle
 
 var seed : int4
 
-var img_hero : ImageHandle
+var img_hero_idle_l : ImageHandle
+var img_hero_idle_r : ImageHandle
+var img_hero_jump_l : ImageHandle
+var img_hero_jump_r : ImageHandle
+var img_hero_walk_l : ImageHandle
+var img_hero_walk_r : ImageHandle
+var img_hero_lie_l : ImageHandle
+var img_hero_lie_r : ImageHandle
+
 var img_tree : ImageHandle
 var hero_pos : float2
 var hero_vel : float2
@@ -46,6 +56,8 @@ def add_unit(pos: float2)
     var u : Unit
     u.is_hero = false
     u.is_enabled = true
+    u.is_face_right = true
+    u.is_lie = false
     u.pos = pos
     u.vel = float2(0.f, 0.f)
     u.frame_count = 1
@@ -71,7 +83,15 @@ def initialize(is_hard_reload: bool)
 
     set_resolution(1920, 1080)
 
-    img_hero = create_managed_image("hero_ss_test.png")
+    img_hero_idle_l = create_managed_image("hero_idle_l.png")
+    img_hero_idle_r = create_managed_image("hero_idle_r.png")
+    img_hero_jump_l = create_managed_image("hero_jump_l.png")
+    img_hero_jump_r = create_managed_image("hero_jump_r.png")
+    img_hero_walk_l = create_managed_image("hero_walk_l.png")
+    img_hero_walk_r = create_managed_image("hero_walk_r.png")
+    img_hero_lie_l = create_managed_image("hero_lie_l.png")
+    img_hero_lie_r = create_managed_image("hero_lie_r.png")
+
     img_tree = create_managed_image("tree.png")
     
     time_since_step = 0.f
@@ -108,7 +128,7 @@ def move_unit(var u: Unit&; dt:float)
             if u.vel.y != 0.f
                 snd_step |> play_sound(random_float(seed)*0.1+0.5, random_float(seed)*0.5+0.5)
             u.pos.y = floor_y
-            u.vel.y = 0.0
+            u.vel.y = 0.f
 
     u.pos.x = u.pos.x + u.vel.x * dt
 
@@ -131,18 +151,31 @@ def act(dt: float)
     var shoot_dir = float2(0.f, 0.f)
     var do_step = false
     units[0].vel.x = units[0].vel.x * 0.5
+    if abs(units[0].vel.x) < 100.f
+        units[0].vel.x = 0.f
+    var do_lie = false
     if get_key(VK_A) || get_key(VK_LEFT)
         shoot_dir.x = -1.f
         units[0].vel.x = -150.0*5.0
+        units[0].is_face_right = false
         do_step = units[0].vel.y == 0.f
     if get_key(VK_D) || get_key(VK_RIGHT)
         shoot_dir.x = 1.f
         units[0].vel.x = 150.0*5.0
+        units[0].is_face_right = true
         do_step = units[0].vel.y == 0.f
     if get_key(VK_W) || get_key(VK_UP)
         shoot_dir.y = -1.f
     if get_key(VK_S) || get_key(VK_DOWN)
-        shoot_dir.y = 1.f
+        print("s")
+        if units[0].vel.x == 0.f && units[0].vel.y == 0.f
+            print("x")
+            do_lie = true
+        else
+            shoot_dir.y = 1.f
+    
+    units[0].is_lie = do_lie
+
     if get_key(VK_M)
         if units[0].pos.y >= floor_y
             units[0].vel.y = -150.0*9.8
@@ -155,7 +188,10 @@ def act(dt: float)
         if !is_prev_trigger_pressed
             is_prev_trigger_pressed = true
             var bullet_vel = 1500.f * shoot_dir
-            add_bullet(true, units[0].pos + float2(48.f, -130.f), bullet_vel + float2(units[0].vel.x, 0.f))
+            var start_pos = units[0].pos + float2(48.f, -150.f)
+            if units[0].is_lie
+                start_pos += float2(150.f, 70.f)
+            add_bullet(true, start_pos, bullet_vel + float2(units[0].vel.x, 0.f))
     else
         is_prev_trigger_pressed = false
 
@@ -225,8 +261,18 @@ def draw
                             float(frame_width),
                             float(frame_height))
         
-            var img = u.is_hero ? img_hero : img_tree
-            img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
+            var img = u.is_face_right ? img_hero_idle_r : img_hero_idle_l
+            if u.is_lie && u.vel.y == 0.f && u.vel.x == 0.f
+                img = u.is_face_right ? img_hero_lie_r : img_hero_lie_l
+                img |> draw_image(u.pos.x, u.pos.y - float(img.height))
+            elif (u.vel.y != 0.f)
+                img = u.is_face_right ? img_hero_jump_r :img_hero_jump_l
+                img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
+            elif (u.vel.y == 0.f && u.vel.x != 0.f)
+                img = u.is_face_right ? img_hero_walk_r : img_hero_walk_l
+                img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
+            else
+                img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
         else
             var img = img_tree
             img |> draw_image(u.pos.x, u.pos.y - float(img.height))
