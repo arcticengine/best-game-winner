@@ -13,7 +13,9 @@ struct Unit
     is_hero : bool
     pos : float2
     vel : float2
-    frame_count: int = 1
+    frame_count : int
+    frame_idx : int
+    time_in_cur_frame : float
 
 var units : array<Unit>
 
@@ -37,14 +39,15 @@ def add_unit(pos: float2)
     u.is_enabled = true
     u.pos = pos
     u.vel = float2(0.f, 0.f)
+    u.frame_count = 1
+    u.frame_idx = 0
+    u.time_in_cur_frame = 0.f
     units |> push(u)
     return
 
 // 'initialize' runs once when game starts and every hot-reload
 [export]
 def initialize(is_hard_reload: bool)
-    test_map()
-
     set_window_title("best game winner")
     level_text = replace(level_text,"\n","")
 
@@ -68,6 +71,7 @@ def initialize(is_hard_reload: bool)
 
     add_unit(float2(500.f, 500.f))
     units[0].is_hero = true;
+    units[0].frame_count = 3;
     add_unit(float2(1000.f, 500.f))
 
     return
@@ -88,14 +92,15 @@ def move_unit(var u: Unit&; dt:float)
 
     u.pos.x = u.pos.x + u.vel.x * dt
 
-// use functions?
-// def play_hero_idle_animation()
 
-// or use animation state machine?
+// use animation state machine and functions to control it
 // enum HeroAnimationStates
 //     idle
 //     run
-//     walk
+//     jump
+// def start_hero_idle_animation()
+// def start_hero_run_animation()
+// def start_hero_jump_animation()
 
 // this function is called to update game data,
 // dt - time elapsed since the previous update (in seconds)
@@ -103,9 +108,6 @@ def move_unit(var u: Unit&; dt:float)
 def act(dt: float)
     if get_key(VK_ESCAPE)
         schedule_quit_game()
-
-    for u in units    
-        move_unit(u, dt)
 
     var do_step = false
     units[0].vel.x = units[0].vel.x * 0.5
@@ -119,6 +121,13 @@ def act(dt: float)
         if units[0].pos.y >= floor_y
             units[0].vel.y = -150.0*9.8
 
+    for u in units    
+        move_unit(u, dt)
+        u.time_in_cur_frame += dt
+        if u.time_in_cur_frame >= frame_duration
+            u.time_in_cur_frame = 0.f
+            u.frame_idx = (u.frame_idx + 1) % u.frame_count
+
     time_since_step += dt
     if do_step && time_since_step >= time_between_steps
         snd_step |> play_sound(random_float(seed)*0.1+0.5, random_float(seed)*0.5+0.5)
@@ -129,8 +138,8 @@ def act(dt: float)
 
 // this function will be called every frame after 'act',
 // you can draw anything in this function
-var hsid = 0
-var hero_framenum = 2
+var hero_frame_count = 2
+var frame_duration = 1.f / 15.f
 [export]
 def draw
     set_font_size(12)
@@ -140,19 +149,18 @@ def draw
     enable_alpha_blend()
 
     for u in units
-        var frame_width = 122
-        var frame_height = 256
-        var vertical_num = 1
-        let rect = float4(float(frame_width*hsid),
-                        float(0),
-                        float(frame_width),
-                        float(frame_height))
+        if u.is_hero
+            var frame_width = 122
+            var frame_height = 256
+            var vertical_num = 1
+            let rect = float4(float(frame_width*u.frame_idx),
+                            float(0),
+                            float(frame_width),
+                            float(frame_height))
         
-        var img = u.is_hero ? img_hero : img_tree
-        img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
-
-    // img_hero |> draw_image_region(hero_pos.x, hero_pos.y - float(img_hero.height), rect)
-    hsid++
-    if hsid > hero_framenum
-        hsid = 0
+            var img = u.is_hero ? img_hero : img_tree
+            img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
+        else
+            var img = img_tree
+            img |> draw_image(u.pos.x, u.pos.y - float(img.height))
     return
