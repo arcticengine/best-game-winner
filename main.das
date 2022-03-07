@@ -4,8 +4,11 @@ require daslib/media
 require map
 
 var level_text = "
-########         ############       ############
+#                ############       ############
+#  ###     #######          #########          #
+#        ##   ###########          #########   #
 # ##   ###########          #########          #
+################################################
 "
 
 struct Unit
@@ -14,6 +17,7 @@ struct Unit
     is_face_right : bool
     is_lie : bool
     is_vertical_slowdown : bool
+    is_on_the_ground : bool
     pos : float2
     vel : float2
     frame_count : int
@@ -26,8 +30,15 @@ struct Bullet
     pos : float2
     vel : float2
 
+struct LevelCell
+    is_walkable : bool
+    is_down_jump_allowed : bool
+    is_up_jump_allowed : bool
+    is_empty : bool
+
 var units : array<Unit>
 var bullets : array<Bullet>
+var level : array<LevelCell>
 
 var snd_step : SoundHandle
 
@@ -60,6 +71,7 @@ def add_unit(pos: float2)
     u.is_face_right = true
     u.is_lie = false
     u.is_vertical_slowdown = false
+    u.is_on_the_ground = false
     u.pos = pos
     u.vel = float2(0.f, 0.f)
     u.frame_count = 1
@@ -77,11 +89,40 @@ def add_bullet(is_heroes: bool; pos: float2; vel: float2)
     bullets |> push(b)
     return
 
+def at(p:int2): int
+    return p.x+p.y*48
+
+def level_at(pos:int2) : LevelCell
+    if pos.x < 0 || pos.x >= 48 || pos.y < 0 || pos.y >=5
+        var c : LevelCell
+        c.is_walkable = false
+        c.is_down_jump_allowed = true
+        c.is_up_jump_allowed = true
+        c.is_empty = true
+        return c
+    return level[at(pos)]
+
+def space_to_level(p:float2): int2
+    var offset_p = p - float2(0.f, 80.f)
+    var cell_p = offset_p / 200.f
+    var int_p = int2(int(cell_p.x), int(cell_p.y))
+    return int_p
+
 // 'initialize' runs once when game starts and every hot-reload
 [export]
 def initialize(is_hard_reload: bool)
     set_window_title("best game winner")
     level_text = replace(level_text,"\n","")
+    for y in range(0,5)
+        for x in range(0,48)
+            var c : int
+            c = character_at(level_text, x+y*48)
+            var cell : LevelCell
+            cell.is_walkable = c=='#'
+            cell.is_down_jump_allowed = c=='#'
+            cell.is_up_jump_allowed = c=='#'
+            cell.is_empty = c!='#'
+            level |> push(cell)
 
     set_resolution(1920, 1080)
 
@@ -115,25 +156,51 @@ def initialize(is_hard_reload: bool)
     add_unit(float2(1000.f, 500.f))
 
     is_prev_trigger_pressed = false
-
     return
 
+def get_floor_for(pos: float2)
+    var level_pos = space_to_level(pos)
+    var cell = level_at(level_pos)
+
+    var cur_floor_y = floor_y;
+    if pos.y == float(level_pos.y) * 200.0 + 80.f && cell.is_walkable
+        return pos.y
+    var y = level_pos.y + 1
+    while y < 5
+        if level_at(int2(level_pos.x, y)).is_walkable
+            return float(y) * 200.0 + 80.f
+        y++
+    return floor_y
+
 def move_unit(var u: Unit&; dt:float)
+    var prev_pos = u.pos
+    var prev_level_pos = space_to_level(u.pos)
+    var prev_cell = level_at(prev_level_pos)
+
+    var cur_floor_y = get_floor_for(u.pos)
     
-    if u.pos.y < floor_y
-        u.pos.y = min(floor_y, u.pos.y + u.vel.y * dt + 9.8 * dt * dt)
+    if u.pos.y < cur_floor_y
+        u.pos.y = min(cur_floor_y, u.pos.y + u.vel.y * dt + 9.8 * dt * dt)
         if u.is_vertical_slowdown && u.vel.y < 0.f
             u.vel.y += 150.0*9.8 * dt * 2.f
+            u.is_on_the_ground = false
         else
             u.vel.y += 150.0*9.8 * dt
+            u.is_on_the_ground = false
     else
         if u.vel.y < 0.0
             u.pos += u.vel * dt
+            u.is_on_the_ground = false
         else
             if u.vel.y != 0.f
                 snd_step |> play_sound(random_float(seed)*0.1+0.5, random_float(seed)*0.5+0.5)
-            u.pos.y = floor_y
+            u.is_on_the_ground = true
+            u.pos.y = cur_floor_y
             u.vel.y = 0.f
+    
+    var new_pos = u.pos
+    var new_level_pos = space_to_level(u.pos)
+    var new_cell = level_at(new_level_pos)
 
     u.pos.x = u.pos.x + u.vel.x * dt
 
@@ -172,9 +239,7 @@ def act(dt: float)
     if get_key(VK_W) || get_key(VK_UP)
         shoot_dir.y = -1.f
     if get_key(VK_S) || get_key(VK_DOWN)
-        print("s")
         if units[0].vel.x == 0.f && units[0].vel.y == 0.f
-            print("x")
             do_lie = true
         else
             shoot_dir.y = 1.f
@@ -182,7 +247,16 @@ def act(dt: float)
     units[0].is_lie = do_lie
 
     if get_key(VK_M)
-        if units[0].pos.y >= floor_y
+        var cur_floor_y = get_floor_for(units[0].pos)
+        var is_downjump = false
+        if cur_floor_y == units[0].pos.y
+            if units[0].is_on_the_ground
+                if get_key(VK_DOWN) || get_key(VK_S)
+                    var cell = level_at(space_to_level(units[0].pos))
+                    if cell.is_down_jump_allowed
+                        units[0].pos.y += 1.f
+                        is_downjump = true
+        if units[0].pos.y >= cur_floor_y && !is_downjump
             units[0].vel.y = -150.0*9.8
             units[0].is_vertical_slowdown = false
     else
@@ -253,6 +327,12 @@ var hero_frame_count = 2
 var frame_duration = 1.f / 15.f
 [export]
 def draw
+    for x in range(0,48)
+        for y in range(0,5)
+            if !level[at(int2(x,y))].is_empty
+                fill_rect(float(x) * 200.f, 80.f + float(y) * 200.f, 200.f, 200.f, make_color32(0,128,0))
+                fill_rect(float(x) * 200.f, 80.f + 20.f + float(y) * 200.f, 200.f, 180.f, make_color32(128,68,0))
+
     set_font_size(48)
     var text = "Controls: WSAD NM"
     text_out(get_screen_width()/2 - int(get_text_size(text).x)/2, get_screen_height()-60, text, make_color32(255,255,255))
