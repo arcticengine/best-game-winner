@@ -4,14 +4,9 @@ require daslib/media
 require math
 require map
 
-var level_text = "
-#                ############       ############
-#  ###     #######          #########          #
-#        ##   ###########          #########   #
-# ##   ###########          #########          #
-################################################
-"
-
+///////////////////////////////////////////////////////////////////////////////
+//  TYPES
+///////////////////////////////////////////////////////////////////////////////
 struct Unit
     is_enabled : bool
     is_hero : bool
@@ -37,6 +32,23 @@ struct LevelCell
     is_up_jump_allowed : bool
     is_empty : bool
 
+///////////////////////////////////////////////////////////////////////////////
+//  SETTINGS
+///////////////////////////////////////////////////////////////////////////////
+var time_between_steps = 0.1f
+var frame_duration = 1.f / 15.f
+
+var level_text = "
+ #               ####   #####       #####   ####
+#                           #########          #
+               ##  ######          ######      #
+    ####                    #######      ##    #
+#        ##    ####     #        ##     # # #  #
+"
+
+///////////////////////////////////////////////////////////////////////////////
+//  VARIABLES
+///////////////////////////////////////////////////////////////////////////////
 var units : array<Unit>
 var bullets : array<Bullet>
 var level : array<LevelCell>
@@ -55,16 +67,16 @@ var img_hero_lie_l : ImageHandle
 var img_hero_lie_r : ImageHandle
 
 var img_tree : ImageHandle
-var hero_pos : float2
-var hero_vel : float2
 
 var floor_y = 1080.f - 10.f
-var time_between_steps = 0.1f
-
 var time_since_step : float
-
 var is_prev_trigger_pressed : bool
 
+var level_view_pos : float2
+
+///////////////////////////////////////////////////////////////////////////////
+//  CODE
+///////////////////////////////////////////////////////////////////////////////
 def add_unit(pos: float2)
     var u : Unit
     u.is_hero = false
@@ -157,6 +169,7 @@ def initialize(is_hard_reload: bool)
     add_unit(float2(1000.f, 500.f))
 
     is_prev_trigger_pressed = false
+    level_view_pos = float2(0.f, 0.f)
     return
 
 def get_floor_for(pos: float2)
@@ -286,10 +299,17 @@ def act(dt: float)
             u.frame_idx = (u.frame_idx + 1) % u.frame_count
 
     var screen_size = float2(float(get_screen_width()), float(get_screen_height()))
-    
+
+    level_view_pos = approach(level_view_pos, units[0].pos - screen_size * 0.5, dt, 0.25)
+    if level_view_pos.x < 0.f
+        level_view_pos.x = 0.f
+    if level_view_pos.y > 0.f
+        level_view_pos.y = 0.f
+
     var i : int = int(length(bullets))  - 1
     while i >= 0
         bullets[i].pos += bullets[i].vel * dt
+        var scr_pos = bullets[i].pos - level_view_pos
         var do_remove = false
         if bullets[i].is_heroes
             var unit_idx = 0
@@ -301,13 +321,13 @@ def act(dt: float)
             // todo: collisions with the hero
             var u = units[0]
 
-        if bullets[i].pos.x > screen_size.x && bullets[i].vel.x > 0.f
+        if scr_pos.x > screen_size.x && bullets[i].vel.x > 0.f
             do_remove = true
-        elif bullets[i].pos.y > screen_size.y && bullets[i].vel.y > 0.f
+        elif scr_pos.y > screen_size.y && bullets[i].vel.y > 0.f
             do_remove = true
-        elif bullets[i].pos.x < 0.f && bullets[i].vel.x < 0.f
+        elif scr_pos.x < 0.f && bullets[i].vel.x < 0.f
             do_remove = true
-        elif bullets[i].pos.y < 0.f && bullets[i].vel.y < 0.f
+        elif scr_pos.y < 0.f && bullets[i].vel.y < 0.f
             do_remove = true
         if do_remove
             bullets[i] = bullets[length(bullets) - 1]
@@ -324,15 +344,20 @@ def act(dt: float)
 
 // this function will be called every frame after 'act',
 // you can draw anything in this function
-var hero_frame_count = 2
-var frame_duration = 1.f / 15.f
 [export]
 def draw
     for x in range(0,48)
         for y in range(0,5)
             if !level[at(int2(x,y))].is_empty
-                fill_rect(float(x) * 200.f, 80.f + float(y) * 200.f, 200.f, 200.f, make_color32(0,128,0))
-                fill_rect(float(x) * 200.f, 80.f + 20.f + float(y) * 200.f, 200.f, 180.f, make_color32(128,68,0))
+                
+                fill_rect(
+                    float(x) * 200.f - level_view_pos.x,
+                    80.f + float(y) * 200.f - level_view_pos.y,
+                    200.f, 200.f, make_color32(0,128,0))
+                fill_rect(
+                    float(x) * 200.f - level_view_pos.x,
+                    80.f + 20.f + float(y) * 200.f - level_view_pos.y,
+                    200.f, 180.f, make_color32(128,68,0))
 
     set_font_size(48)
     var text = "Controls: WSAD NM"
@@ -341,6 +366,7 @@ def draw
     enable_alpha_blend()
 
     for u in units
+        var scr_pos = u.pos - level_view_pos
         if u.is_hero
             var frame_width = 122
             var frame_height = 256
@@ -353,21 +379,22 @@ def draw
             var img = u.is_face_right ? img_hero_idle_r : img_hero_idle_l
             if u.is_lie && u.vel.y == 0.f && u.vel.x == 0.f
                 img = u.is_face_right ? img_hero_lie_r : img_hero_lie_l
-                img |> draw_image(u.pos.x - float(frame_width)*0.5, u.pos.y - float(img.height))
+                img |> draw_image(scr_pos.x - float(frame_width)*0.5, scr_pos.y - float(img.height))
             elif (u.vel.y != 0.f)
                 img = u.is_face_right ? img_hero_jump_r :img_hero_jump_l
-                img |> draw_image_region(u.pos.x- float(frame_width)*0.5, u.pos.y - float(img.height), rect)
+                img |> draw_image_region(scr_pos.x- float(frame_width)*0.5, scr_pos.y - float(img.height), rect)
             elif (u.vel.y == 0.f && u.vel.x != 0.f)
                 img = u.is_face_right ? img_hero_walk_r : img_hero_walk_l
-                img |> draw_image_region(u.pos.x- float(frame_width)*0.5, u.pos.y - float(img.height), rect)
+                img |> draw_image_region(scr_pos.x- float(frame_width)*0.5, scr_pos.y - float(img.height), rect)
             else
-                img |> draw_image_region(u.pos.x- float(frame_width)*0.5, u.pos.y - float(img.height), rect)
+                img |> draw_image_region(scr_pos.x- float(frame_width)*0.5, scr_pos.y - float(img.height), rect)
         else
             var img = img_tree
-            img |> draw_image(u.pos.x, u.pos.y - float(img.height))
+            img |> draw_image(scr_pos.x, scr_pos.y - float(img.height))
 
     for b in bullets
         if b.is_enabled
-            fill_circle(b.pos.x, b.pos.y, 10.f, make_color32(255,32,32))
-            fill_circle(b.pos.x, b.pos.y, 7.f, make_color32(32,32,255))
+            var scr_pos = b.pos - level_view_pos
+            fill_circle(scr_pos.x, scr_pos.y, 10.f, make_color32(255,32,32))
+            fill_circle(scr_pos.x, scr_pos.y, 7.f, make_color32(32,32,255))
     return
