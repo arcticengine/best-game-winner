@@ -1,6 +1,7 @@
 options debugger            // uncomment for debug in VS Code
 require daslib/debug        // uncomment for debug in VS Code
 require daslib/media
+require math
 require map
 
 var level_text = "
@@ -105,7 +106,7 @@ def level_at(pos:int2) : LevelCell
 def space_to_level(p:float2): int2
     var offset_p = p - float2(0.f, 80.f)
     var cell_p = offset_p / 200.f
-    var int_p = int2(int(cell_p.x), int(cell_p.y))
+    var int_p = int2(int(cell_p.x), int(ceil(cell_p.y)))
     return int_p
 
 // 'initialize' runs once when game starts and every hot-reload
@@ -165,7 +166,7 @@ def get_floor_for(pos: float2)
     var cur_floor_y = floor_y;
     if pos.y == float(level_pos.y) * 200.0 + 80.f && cell.is_walkable
         return pos.y
-    var y = level_pos.y + 1
+    var y = level_pos.y
     while y < 5
         if level_at(int2(level_pos.x, y)).is_walkable
             return float(y) * 200.0 + 80.f
@@ -352,15 +353,15 @@ def draw
             var img = u.is_face_right ? img_hero_idle_r : img_hero_idle_l
             if u.is_lie && u.vel.y == 0.f && u.vel.x == 0.f
                 img = u.is_face_right ? img_hero_lie_r : img_hero_lie_l
-                img |> draw_image(u.pos.x, u.pos.y - float(img.height))
+                img |> draw_image(u.pos.x - float(frame_width)*0.5, u.pos.y - float(img.height))
             elif (u.vel.y != 0.f)
                 img = u.is_face_right ? img_hero_jump_r :img_hero_jump_l
-                img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
+                img |> draw_image_region(u.pos.x- float(frame_width)*0.5, u.pos.y - float(img.height), rect)
             elif (u.vel.y == 0.f && u.vel.x != 0.f)
                 img = u.is_face_right ? img_hero_walk_r : img_hero_walk_l
-                img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
+                img |> draw_image_region(u.pos.x- float(frame_width)*0.5, u.pos.y - float(img.height), rect)
             else
-                img |> draw_image_region(u.pos.x, u.pos.y - float(img.height), rect)
+                img |> draw_image_region(u.pos.x- float(frame_width)*0.5, u.pos.y - float(img.height), rect)
         else
             var img = img_tree
             img |> draw_image(u.pos.x, u.pos.y - float(img.height))
