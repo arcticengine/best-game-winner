@@ -39,11 +39,11 @@ var time_between_steps = 0.1f
 var frame_duration = 1.f / 15.f
 
 var level_text = "
- #               ####   #####       #####   ####
-#                           #########          #
-               ##  ######          ######      #
-    ####                    #######      ##    #
-#        ##    ####     #        ##     # # #  #
+E#               ####   #####  EE E #####   ####
+#              E   E EEE    #########E EE      #
+      E        ##  ######    EE EE ###### E    #
+    #### EE     E E     E   #######     E## E  #
+#        ## EE ####  E  # EE E   ## EE  # # # E#
 "
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -67,6 +67,8 @@ var img_hero_lie_l : ImageHandle
 var img_hero_lie_r : ImageHandle
 
 var img_tree : ImageHandle
+
+var img_bg : ImageHandle
 
 var floor_y = 1080.f - 10.f
 var time_since_step : float
@@ -125,6 +127,11 @@ def space_to_level(p:float2): int2
 [export]
 def initialize(is_hard_reload: bool)
     set_window_title("best game winner")
+
+    add_unit(float2(100.f, 500.f))
+    units[0].is_hero = true;
+    units[0].frame_count = 3;
+    
     level_text = replace(level_text,"\n","")
     for y in range(0,5)
         for x in range(0,48)
@@ -136,6 +143,8 @@ def initialize(is_hard_reload: bool)
             cell.is_up_jump_allowed = c=='#'
             cell.is_empty = c!='#'
             level |> push(cell)
+            if c=='E'
+                add_unit(float2(float(x) * 200.f + 100.f, 80.f + float(y) * 200.f))
 
     set_resolution(1920, 1080)
 
@@ -150,6 +159,8 @@ def initialize(is_hard_reload: bool)
 
     img_tree = create_managed_image("tree.png")
     
+    img_bg = create_managed_image("bg.jpg")
+
     time_since_step = 0.f
 
     var wav : array<float>
@@ -163,10 +174,7 @@ def initialize(is_hard_reload: bool)
 
     snd_step = create_managed_sound(44100, wav)
 
-    add_unit(float2(500.f, 500.f))
-    units[0].is_hero = true;
-    units[0].frame_count = 3;
-    add_unit(float2(1000.f, 500.f))
+    
 
     is_prev_trigger_pressed = false
     level_view_pos = float2(0.f, 0.f)
@@ -312,10 +320,16 @@ def act(dt: float)
         var scr_pos = bullets[i].pos - level_view_pos
         var do_remove = false
         if bullets[i].is_heroes
-            var unit_idx = 0
+            var unit_idx = 1
             while unit_idx < length(units)
                 var u = units[unit_idx]
-                // todo: collisions with enemies
+                var p0 = float2(u.pos.x-float(img_tree.width)*0.5, u.pos.y - float(img_tree.height))
+                var p1 = float2(u.pos.x+float(img_tree.width)*0.5, u.pos.y)
+                var b_pos = bullets[i].pos
+                if b_pos.x >= p0.x && b_pos.y >= p0.y && b_pos.x <= p1.x && b_pos.y <= p1.y
+                    do_remove = true
+                    units[unit_idx] = units[length(units) - 1]
+                    pop(units)
                 unit_idx++
         else
             // todo: collisions with the hero
@@ -346,6 +360,8 @@ def act(dt: float)
 // you can draw anything in this function
 [export]
 def draw
+    img_bg |> draw_image(0.f, 0.f)
+
     for x in range(0,48)
         for y in range(0,5)
             if !level[at(int2(x,y))].is_empty
@@ -390,11 +406,11 @@ def draw
                 img |> draw_image_region(scr_pos.x- float(frame_width)*0.5, scr_pos.y - float(img.height), rect)
         else
             var img = img_tree
-            img |> draw_image(scr_pos.x, scr_pos.y - float(img.height))
+            img |> draw_image(scr_pos.x - float(img.width) * 0.5, scr_pos.y - float(img.height))
 
     for b in bullets
         if b.is_enabled
             var scr_pos = b.pos - level_view_pos
             fill_circle(scr_pos.x, scr_pos.y, 10.f, make_color32(255,32,32))
-            fill_circle(scr_pos.x, scr_pos.y, 7.f, make_color32(32,32,255))
+            fill_circle(scr_pos.x, scr_pos.y, 7.f, make_color32(255,128,128))
     return
