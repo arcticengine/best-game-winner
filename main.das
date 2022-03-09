@@ -113,6 +113,7 @@ def space_to_level(p:float2): int2
 [export]
 def initialize(is_hard_reload: bool)
     set_window_title("best game winner")
+    load_map()
     level_text = replace(level_text,"\n","")
     for y in range(0,5)
         for x in range(0,48)
