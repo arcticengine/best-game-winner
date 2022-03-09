@@ -148,14 +148,14 @@ def initialize(is_hard_reload: bool)
 
     set_resolution(1920, 1080)
 
-    img_hero_idle_l = create_managed_image("hero_idle_l.png")
-    img_hero_idle_r = create_managed_image("hero_idle_r.png")
-    img_hero_jump_l = create_managed_image("hero_jump_l.png")
-    img_hero_jump_r = create_managed_image("hero_jump_r.png")
-    img_hero_walk_l = create_managed_image("hero_walk_l.png")
-    img_hero_walk_r = create_managed_image("hero_walk_r.png")
-    img_hero_lie_l = create_managed_image("hero_lie_l.png")
-    img_hero_lie_r = create_managed_image("hero_lie_r.png")
+    img_hero_idle_l = create_managed_image("hero_idle_l_0.png")
+    img_hero_idle_r = create_managed_image("hero_idle_r_0.png")
+    img_hero_jump_l = create_managed_image("hero_jump_l_0.png")
+    img_hero_jump_r = create_managed_image("hero_jump_r_0.png")
+    img_hero_walk_l = create_managed_image("hero_walk_l_0.png")
+    img_hero_walk_r = create_managed_image("hero_walk_r_0.png")
+    img_hero_lie_l = create_managed_image("hero_lie_l_0.png")
+    img_hero_lie_r = create_managed_image("hero_lie_r_0.png")
 
     img_tree = create_managed_image("tree.png")
     
@@ -384,26 +384,19 @@ def draw
     for u in units
         var scr_pos = u.pos - level_view_pos
         if u.is_hero
-            var frame_width = 122
-            var frame_height = 256
             var vertical_num = 1
-            let rect = float4(float(frame_width*u.frame_idx),
-                            float(0),
-                            float(frame_width),
-                            float(frame_height))
-        
             var img = u.is_face_right ? img_hero_idle_r : img_hero_idle_l
             if u.is_lie && u.vel.y == 0.f && u.vel.x == 0.f
                 img = u.is_face_right ? img_hero_lie_r : img_hero_lie_l
-                img |> draw_image(scr_pos.x - float(frame_width)*0.5, scr_pos.y - float(img.height))
+                img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
             elif (u.vel.y != 0.f)
                 img = u.is_face_right ? img_hero_jump_r :img_hero_jump_l
-                img |> draw_image_region(scr_pos.x- float(frame_width)*0.5, scr_pos.y - float(img.height), rect)
+                img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
             elif (u.vel.y == 0.f && u.vel.x != 0.f)
                 img = u.is_face_right ? img_hero_walk_r : img_hero_walk_l
-                img |> draw_image_region(scr_pos.x- float(frame_width)*0.5, scr_pos.y - float(img.height), rect)
+                img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
             else
-                img |> draw_image_region(scr_pos.x- float(frame_width)*0.5, scr_pos.y - float(img.height), rect)
+                img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
         else
             var img = img_tree
             img |> draw_image(scr_pos.x - float(img.width) * 0.5, scr_pos.y - float(img.height))
