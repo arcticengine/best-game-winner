@@ -38,7 +38,8 @@ struct LevelCell
 var time_between_steps = 0.1f
 var frame_duration = 1.f / 15.f
 
-var max_jump_height = 410.0
+var tile_size = 150.0
+var max_jump_height = 305.0
 var level_size = int2(48,7)
 var level_text = "
    ####                   #   ##  #      ##    #
@@ -123,14 +124,14 @@ def level_at(pos:int2) : LevelCell
 
 def space_to_level(p:float2): int2
     var offset_p = p - float2(0.f, 0.f)
-    var cell_p = offset_p / 200.f
+    var cell_p = offset_p / tile_size
     var int_p = int2(int(cell_p.x), int(ceil(cell_p.y)))
     return int_p
 
 // 'initialize' runs once when game starts and every hot-reload
 [export]
 def initialize(is_hard_reload: bool)
-    floor_y = 200.f * float(level_size.y)
+    floor_y = tile_size * float(level_size.y)
 
     set_window_title("best game winner")
 
@@ -150,7 +151,7 @@ def initialize(is_hard_reload: bool)
             cell.is_empty = c!='#'
             level |> push(cell)
             if c=='E'
-                add_unit(float2(float(x) * 200.f + 100.f, float(y) * 200.f))
+                add_unit(float2(float(x) * tile_size + tile_size/2.f, float(y) * tile_size))
 
     set_resolution(1920, 1080)
 
@@ -191,12 +192,12 @@ def get_floor_for(pos: float2)
     var cell = level_at(level_pos)
 
     var cur_floor_y = floor_y;
-    if pos.y == float(level_pos.y) * 200.0 && cell.is_walkable
+    if pos.y == float(level_pos.y) * tile_size && cell.is_walkable
         return pos.y
     var y = level_pos.y
     while y < level_size.y
         if level_at(int2(level_pos.x, y)).is_walkable
-            return float(y) * 200.0 
+            return float(y) * tile_size 
         y++
     return floor_y
 
@@ -321,7 +322,7 @@ def act(dt: float)
     level_view_pos = approach(level_view_pos, units[0].pos - screen_size * 0.5, dt, 0.25)
     if level_view_pos.x < 0.f
         level_view_pos.x = 0.f
-    var max_level_view_pos_y = float(level_size.y) * 200.f - float(screen_size.y)
+    var max_level_view_pos_y = float(level_size.y) * tile_size - float(screen_size.y)
     if level_view_pos.y > max_level_view_pos_y
         level_view_pos.y = max_level_view_pos_y
 
@@ -378,13 +379,13 @@ def draw
             if !level[at(int2(x,y))].is_empty
                 
                 fill_rect(
-                    float(x) * 200.f - level_view_pos.x,
-                    float(y) * 200.f - level_view_pos.y,
-                    200.f, 200.f, make_color32(0,128,0))
+                    float(x) * tile_size - level_view_pos.x,
+                    float(y) * tile_size - level_view_pos.y,
+                    tile_size, tile_size, make_color32(0,128,0))
                 fill_rect(
-                    float(x) * 200.f - level_view_pos.x,
-                    20.f + float(y) * 200.f - level_view_pos.y,
-                    200.f, 180.f, make_color32(128,68,0))
+                    float(x) * tile_size - level_view_pos.x,
+                    tile_size * 0.1 + float(y) * tile_size - level_view_pos.y,
+                    tile_size, tile_size * 0.9, make_color32(128,68,0))
 
     set_font_size(48)
     var text = "Controls: WSAD NM"
