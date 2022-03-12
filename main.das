@@ -38,7 +38,11 @@ struct LevelCell
 var time_between_steps = 0.1f
 var frame_duration = 1.f / 15.f
 
+var max_jump_height = 410.0
+var level_size = int2(48,7)
 var level_text = "
+   ####                   #   ##  #      ##    #
+#### EE                  ##   #####     E##    #
 E#               ####   #####  EE E #####   ####
 #              E   E EEE    #########E EE      #
       E        ##  ######    EE EE ###### E    #
@@ -70,7 +74,7 @@ var img_tree : ImageHandle
 
 var img_bg : ImageHandle
 
-var floor_y = 1080.f - 10.f
+var floor_y : float
 var time_since_step : float
 var is_prev_trigger_pressed : bool
 
@@ -105,10 +109,10 @@ def add_bullet(is_heroes: bool; pos: float2; vel: float2)
     return
 
 def at(p:int2): int
-    return p.x+p.y*48
+    return p.x+p.y*level_size.x
 
 def level_at(pos:int2) : LevelCell
-    if pos.x < 0 || pos.x >= 48 || pos.y < 0 || pos.y >=5
+    if pos.x < 0 || pos.x >= level_size.x || pos.y < 0 || pos.y >= level_size.y
         var c : LevelCell
         c.is_walkable = false
         c.is_down_jump_allowed = true
@@ -118,7 +122,7 @@ def level_at(pos:int2) : LevelCell
     return level[at(pos)]
 
 def space_to_level(p:float2): int2
-    var offset_p = p - float2(0.f, 80.f)
+    var offset_p = p - float2(0.f, 0.f)
     var cell_p = offset_p / 200.f
     var int_p = int2(int(cell_p.x), int(ceil(cell_p.y)))
     return int_p
@@ -126,6 +130,8 @@ def space_to_level(p:float2): int2
 // 'initialize' runs once when game starts and every hot-reload
 [export]
 def initialize(is_hard_reload: bool)
+    floor_y = 200.f * float(level_size.y)
+
     set_window_title("best game winner")
 
     add_unit(float2(100.f, 500.f))
@@ -133,10 +139,10 @@ def initialize(is_hard_reload: bool)
     units[0].frame_count = 3;
     
     level_text = replace(level_text,"\n","")
-    for y in range(0,5)
-        for x in range(0,48)
+    for y in range(0,level_size.y)
+        for x in range(0,level_size.x)
             var c : int
-            c = character_at(level_text, x+y*48)
+            c = character_at(level_text, x+y*level_size.x)
             var cell : LevelCell
             cell.is_walkable = c=='#'
             cell.is_down_jump_allowed = c=='#'
@@ -144,7 +150,7 @@ def initialize(is_hard_reload: bool)
             cell.is_empty = c!='#'
             level |> push(cell)
             if c=='E'
-                add_unit(float2(float(x) * 200.f + 100.f, 80.f + float(y) * 200.f))
+                add_unit(float2(float(x) * 200.f + 100.f, float(y) * 200.f))
 
     set_resolution(1920, 1080)
 
@@ -185,12 +191,12 @@ def get_floor_for(pos: float2)
     var cell = level_at(level_pos)
 
     var cur_floor_y = floor_y;
-    if pos.y == float(level_pos.y) * 200.0 + 80.f && cell.is_walkable
+    if pos.y == float(level_pos.y) * 200.0 && cell.is_walkable
         return pos.y
     var y = level_pos.y
-    while y < 5
+    while y < level_size.y
         if level_at(int2(level_pos.x, y)).is_walkable
-            return float(y) * 200.0 + 80.f
+            return float(y) * 200.0 
         y++
     return floor_y
 
@@ -204,10 +210,10 @@ def move_unit(var u: Unit&; dt:float)
     if u.pos.y < cur_floor_y
         u.pos.y = min(cur_floor_y, u.pos.y + u.vel.y * dt + 9.8 * dt * dt)
         if u.is_vertical_slowdown && u.vel.y < 0.f
-            u.vel.y += 150.0*9.8 * dt * 2.f
+            u.vel.y += 100.0*9.8 * dt * 2.f
             u.is_on_the_ground = false
         else
-            u.vel.y += 150.0*9.8 * dt
+            u.vel.y += 100.0*9.8 * dt
             u.is_on_the_ground = false
     else
         if u.vel.y < 0.0
@@ -279,7 +285,11 @@ def act(dt: float)
                         units[0].pos.y += 1.f
                         is_downjump = true
         if units[0].pos.y >= cur_floor_y && !is_downjump
-            units[0].vel.y = -150.0*9.8
+            // jump velocity: J
+            // time to top: t = J/g
+            // jump height: h = g*t*t/2 = J*J/(2*g)
+            // J = sqrt(h*2*g)
+            units[0].vel.y = -sqrt(max_jump_height*2.0*9.8*100.0)
             units[0].is_vertical_slowdown = false
     else
         units[0].is_vertical_slowdown = true
@@ -311,8 +321,9 @@ def act(dt: float)
     level_view_pos = approach(level_view_pos, units[0].pos - screen_size * 0.5, dt, 0.25)
     if level_view_pos.x < 0.f
         level_view_pos.x = 0.f
-    if level_view_pos.y > 0.f
-        level_view_pos.y = 0.f
+    var max_level_view_pos_y = float(level_size.y) * 200.f - float(screen_size.y)
+    if level_view_pos.y > max_level_view_pos_y
+        level_view_pos.y = max_level_view_pos_y
 
     var i : int = int(length(bullets))  - 1
     while i >= 0
@@ -362,17 +373,17 @@ def act(dt: float)
 def draw
     img_bg |> draw_image(0.f, 0.f)
 
-    for x in range(0,48)
-        for y in range(0,5)
+    for x in range(0,level_size.x)
+        for y in range(0,level_size.y)
             if !level[at(int2(x,y))].is_empty
                 
                 fill_rect(
                     float(x) * 200.f - level_view_pos.x,
-                    80.f + float(y) * 200.f - level_view_pos.y,
+                    float(y) * 200.f - level_view_pos.y,
                     200.f, 200.f, make_color32(0,128,0))
                 fill_rect(
                     float(x) * 200.f - level_view_pos.x,
-                    80.f + 20.f + float(y) * 200.f - level_view_pos.y,
+                    20.f + float(y) * 200.f - level_view_pos.y,
                     200.f, 180.f, make_color32(128,68,0))
 
     set_font_size(48)
