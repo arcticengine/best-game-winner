@@ -155,16 +155,16 @@ def initialize(is_hard_reload: bool)
 
     set_resolution(1920, 1080)
 
-    img_hero_idle_l = create_managed_image("hero_idle_l_0.png")
-    img_hero_idle_r = create_managed_image("hero_idle_r_0.png")
-    img_hero_jump_l = create_managed_image("hero_jump_l_0.png")
-    img_hero_jump_r = create_managed_image("hero_jump_r_0.png")
-    img_hero_walk_l = create_managed_image("hero_walk_l_0.png")
-    img_hero_walk_r = create_managed_image("hero_walk_r_0.png")
-    img_hero_lie_l = create_managed_image("hero_lie_l_0.png")
-    img_hero_lie_r = create_managed_image("hero_lie_r_0.png")
+    img_hero_idle_l = create_managed_image("hero/idle_9/1.png")
+    img_hero_idle_r = create_managed_image("hero/idle_3/1.png")
+    img_hero_jump_l = create_managed_image("hero/jump_9/1.png")
+    img_hero_jump_r = create_managed_image("hero/jump_3/1.png")
+    img_hero_walk_l = create_managed_image("hero/walk_9/1.png")
+    img_hero_walk_r = create_managed_image("hero/walk_3/1.png")
+    img_hero_lie_l = create_managed_image("hero/lie_9/1.png")
+    img_hero_lie_r = create_managed_image("hero/lie_3/1.png")
 
-    img_tree = create_managed_image("tree.png")
+    img_tree = create_managed_image("enemy1/idle_9/1.png")
     
     img_bg = create_managed_image("bg.jpg")
 
