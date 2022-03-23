@@ -322,6 +322,10 @@ def load_map(): bool
                             _chunk.data = chunk_jsonTable["data"] as _string
                             // what to do with that data?
                             // it can be processed after reading all json
+                            _chunk.width = int(chunk_jsonTable["width"] as _number)
+                            _chunk.height = int(chunk_jsonTable["height"] as _number)
+                            _chunk.x = int(chunk_jsonTable["x"] as _number)
+                            _chunk.y = int(chunk_jsonTable["y"] as _number)
                             _layer.chunks |> push(_chunk)
                         // let _draworder = layer_jsonTable["draworder"] as _string
                         // if layer_jsonTable["draworder"] as _string == "topdown"
@@ -539,8 +543,6 @@ def load_map(): bool
             elif k == "version"
                 map.version = v as _string
 
-            
-    print("\nmap: {map}\n")
 
     return true
 

@@ -136,6 +136,10 @@ def initialize(is_hard_reload: bool)
     set_window_title("best game winner")
     load_map()
 
+            
+    print("\nmap: {map}\n")
+
+
     add_unit(float2(100.f, 500.f))
     units[0].is_hero = true;
     units[0].frame_count = 3;
@@ -387,12 +391,23 @@ def draw
                     float(x) * tile_size - level_view_pos.x,
                     tile_size * 0.1 + float(y) * tile_size - level_view_pos.y,
                     tile_size, tile_size * 0.9, make_color32(128,68,0))
+    
+    enable_alpha_blend()    
+    for l in map.layers
+        for c in l.chunks
+            for h in range(c.height)
+                for w in range(c.width)
+                    var _id = character_at(map.layers[0].chunks[3].data,c.width*h+w) - 65
+                    // print(" {_id}")
+                    var _rect: float4 = float4((_id)*map.tilesets[0].tilewidth, (_id)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
+                    draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)-level_view_pos.x+float(c.x)+200., float(h*map.tilesets[0].tileheight)-level_view_pos.y+float(c.y),_rect)
+    
 
     set_font_size(48)
     var text = "Controls: WSAD NM"
     text_out(get_screen_width()/2 - int(get_text_size(text).x)/2, get_screen_height()-60, text, make_color32(255,255,255))
 
-    enable_alpha_blend()
+
 
     for u in units
         var scr_pos = u.pos - level_view_pos
