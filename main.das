@@ -377,31 +377,36 @@ def act(dt: float)
 // you can draw anything in this function
 [export]
 def draw
-    img_bg |> draw_image(0.f, 0.f)
+    // img_bg |> draw_image(0.f, 0.f)
 
-    for x in range(0,level_size.x)
-        for y in range(0,level_size.y)
-            if !level[at(int2(x,y))].is_empty
+    // for x in range(0,level_size.x)
+    //     for y in range(0,level_size.y)
+    //         if !level[at(int2(x,y))].is_empty
                 
-                fill_rect(
-                    float(x) * tile_size - level_view_pos.x,
-                    float(y) * tile_size - level_view_pos.y,
-                    tile_size, tile_size, make_color32(0,128,0))
-                fill_rect(
-                    float(x) * tile_size - level_view_pos.x,
-                    tile_size * 0.1 + float(y) * tile_size - level_view_pos.y,
-                    tile_size, tile_size * 0.9, make_color32(128,68,0))
+    //             fill_rect(
+    //                 float(x) * tile_size - level_view_pos.x,
+    //                 float(y) * tile_size - level_view_pos.y,
+    //                 tile_size, tile_size, make_color32(0,128,0))
+    //             fill_rect(
+    //                 float(x) * tile_size - level_view_pos.x,
+    //                 tile_size * 0.1 + float(y) * tile_size - level_view_pos.y,
+    //                 tile_size, tile_size * 0.9, make_color32(128,68,0))
     
-    enable_alpha_blend()    
+    enable_alpha_blend()
+    var noo = 0    
     for l in map.layers
+        if(noo != 0)
+            break
+        noo++
         for c in l.chunks
-            if c.x < int(level_view_pos.x) + 10 && c.x > int(level_view_pos.x) - 10 && c.y < int(level_view_pos.y) + 30 && c.y > int(level_view_pos.y) - 30
-                for h in range(c.height)
-                    for w in range(c.width)
-                        var _id = c.data[c.width*h+w]
-                        print(" {_id}")
-                        var _rect: float4 = float4((_id)*map.tilesets[0].tilewidth, (_id)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
-                        draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)*1.5-level_view_pos.x+float(c.x)+200., float(h*map.tilesets[0].tileheight)*1.5-level_view_pos.y+float(c.y),_rect)
+            // if c.x < int(level_view_pos.x) + 30 && c.x > int(level_view_pos.x) - 30 && c.y < int(level_view_pos.y) + 30 && c.y > int(level_view_pos.y) - 30
+                // print("\n")
+            for h in range(c.height)
+                for w in range(c.width)
+                    var _id = c.data[c.width*h+w]
+                    // print(" {_id}")
+                    var _rect: float4 = float4((_id)*map.tilesets[0].tilewidth, (_id)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
+                    draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)*1.-level_view_pos.x+float(c.x)+200., float(h*map.tilesets[0].tileheight)*1.-level_view_pos.y+float(c.y),_rect)
     
 
     set_font_size(48)
