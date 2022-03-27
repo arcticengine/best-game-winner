@@ -325,8 +325,8 @@ def act(dt: float)
     var screen_size = float2(float(get_screen_width()), float(get_screen_height()))
 
     level_view_pos = approach(level_view_pos, units[0].pos - screen_size * 0.5, dt, 0.25)
-    if level_view_pos.x < 0.f
-        level_view_pos.x = 0.f
+    // if level_view_pos.x < 0.f
+    //     level_view_pos.x = 0.f
     var max_level_view_pos_y = float(level_size.y) * tile_size - float(screen_size.y)
     if level_view_pos.y > max_level_view_pos_y
         level_view_pos.y = max_level_view_pos_y
@@ -393,20 +393,24 @@ def draw
     //                 tile_size, tile_size * 0.9, make_color32(128,68,0))
     
     enable_alpha_blend()
-    var noo = 0    
+    var noo = 0
     for l in map.layers
-        if(noo != 0)
-            break
-        noo++
+        // if(noo != 0)
+        //     break
+        print("\n{l.startx}X{l.startx}")
         for c in l.chunks
-            // if c.x < int(level_view_pos.x) + 30 && c.x > int(level_view_pos.x) - 30 && c.y < int(level_view_pos.y) + 30 && c.y > int(level_view_pos.y) - 30
-                // print("\n")
+            // print("\n")
+            // if noo != 0
+            //     break
+            // noo++
+            // if (c.x+l.startx)*map.tilesets[0].tilewidth < int(level_view_pos.x) + 1000 && (c.x+l.startx)*map.tilesets[0].tilewidth > int(level_view_pos.x) - 1000 && (c.y+l.starty)*map.tilesets[0].tilewidth < int(level_view_pos.y) + 1000 && (c.y+l.starty)*map.tilesets[0].tilewidth > int(level_view_pos.y) - 1000
+
             for h in range(c.height)
                 for w in range(c.width)
                     var _id = c.data[c.width*h+w]
                     // print(" {_id}")
                     var _rect: float4 = float4((_id)*map.tilesets[0].tilewidth, (_id)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
-                    draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)*1.-level_view_pos.x+float(c.x)+200., float(h*map.tilesets[0].tileheight)*1.-level_view_pos.y+float(c.y),_rect)
+                    draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)*1.-level_view_pos.x+float((c.x+l.startx)*map.tilesets[0].tilewidth), float(h*map.tilesets[0].tileheight)*1.-level_view_pos.y+float((c.y+l.starty)*map.tilesets[0].tileheight),_rect)
     
 
     set_font_size(48)
