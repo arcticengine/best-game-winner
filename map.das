@@ -47,7 +47,7 @@ enum Renderorder
     left_up
 
 struct Chunk
-    data: string
+    data: array<int>
     height: int
     width: int
     x: int
@@ -103,7 +103,7 @@ variant PropertyVariant
 struct Layer
     chunks: array<Chunk>
     compression: Compression
-    data: string
+    data: array<int>
     draworder: Draworder
     encoding: Encoding
     height: int
@@ -291,7 +291,7 @@ def load_map(): bool
         jsonTable := json as _object
         var i = 0
         for k,v in keys(jsonTable), values(jsonTable)
-            print("Pair" + string(i) + ": " + "{k}:{v}\n")
+            // print("Pair" + string(i) + ": " + "{k}:{v}\n")
             i++
             if k == "backgroundcolor"
                 map.backgroundcolor = string_to_uint(v as _string) + 0xff000000
@@ -311,22 +311,46 @@ def load_map(): bool
                     for layerv in v as _array
                         var _layer <- [[Layer]]
                         layer_jsonTable := layerv as _object
-                        print("\n{get_jsonval_variant(layer_jsonTable["chunks"])}\n")
+                        // print("\n{get_jsonval_variant(layer_jsonTable["chunks"])}\n")
                         var chunk_jsonTable: table<string; JsonValue?>
                         for chunkv in layer_jsonTable["chunks"] as _array
                             chunk_jsonTable := chunkv as _object
-                            print("\n{get_jsonval_variant(chunk_jsonTable["data"])}\n")
-                            var _chunk = [[Chunk]]
+                            // print("\n{get_jsonval_variant(chunk_jsonTable["data"])}\n")
+                            var _chunk <- [[Chunk]]
                             // for datav in (chunk_jsonTable["data"] as _string)
                                 // print("\n{get_jsonval_variant(datav)}\n")
-                            _chunk.data = chunk_jsonTable["data"] as _string
+                            // _chunk.data = chunk_jsonTable["data"] as _string // WRONG, data must be decoded as comma separated values, or base64, which is idk
+                            // if layer_jsonTable["encoding"] as _string == "base64" // when csv encoding is undefined
+                            
+                            // assuming CSV is used
+                            // WRONG, no need to parse, data is array
+                            // var _data = chunk_jsonTable["data"] as _string 
+                            // var _strt: int = 0
+                            // var _end: int = 0
+                            // for d in range(length(_data))
+                            //     var t = character_at(_data, d)
+                            //     if t == ','
+                            //         if _end <= _strt
+                            //             continue
+                            //         push(_chunk.data, to_int(slice(_data, _strt, _end), false))
+                            //         _strt = d + 1
+                            //     else
+                            //         _end = d
+                            if chunk_jsonTable["data"] is _array // then CSV
+                                for nodev in chunk_jsonTable["data"] as _array
+                                    push(_chunk.data, int(nodev as _number))
+                            elif chunk_jsonTable["data"] is _string
+                                panic("\nTODO: parse base64, use CSV tiled format for now\n")
+                            else
+                                panic("\nchunk data format is unknown\n")
+
                             // what to do with that data?
                             // it can be processed after reading all json
                             _chunk.width = int(chunk_jsonTable["width"] as _number)
                             _chunk.height = int(chunk_jsonTable["height"] as _number)
                             _chunk.x = int(chunk_jsonTable["x"] as _number)
                             _chunk.y = int(chunk_jsonTable["y"] as _number)
-                            _layer.chunks |> push(_chunk)
+                            _layer.chunks |> push_clone(_chunk)
                         // let _draworder = layer_jsonTable["draworder"] as _string
                         // if layer_jsonTable["draworder"] as _string == "topdown"
                         //     _layer.draworder = Draworder topdown // for objects
@@ -379,16 +403,16 @@ def load_map(): bool
                     for vv in v as _array
                         add_property(map.properties, vv)
             elif k == "renderorder"
-                if v as _number == double(0)
+                if v as _string == "right-down"
                     map.renderorder = Renderorder right_down
-                elif v as _number == double(1)
+                elif v as _string == "right-up"
                     map.renderorder = Renderorder right_up
-                elif v as _number == double(2)
+                elif v as _string == "left-down"
                     map.renderorder = Renderorder left_down
-                elif v as _number == double(3)
+                elif v as _string == "left-up"
                     map.renderorder = Renderorder left_up
                 else
-                    print("\nerror: wrong renderorder number in {fname}\n")
+                    print("\nerror: wrong renderorder in {fname}: {v as _string}\n")
             elif k == "staggeraxis"
                 if v as _string == "x"
                     map.staggeraxis = Staggeraxis x

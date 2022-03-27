@@ -137,7 +137,7 @@ def initialize(is_hard_reload: bool)
     load_map()
 
             
-    print("\nmap: {map}\n")
+    // print("\nmap: {map}\n")
 
 
     add_unit(float2(100.f, 500.f))
@@ -395,12 +395,13 @@ def draw
     enable_alpha_blend()    
     for l in map.layers
         for c in l.chunks
-            for h in range(c.height)
-                for w in range(c.width)
-                    var _id = character_at(map.layers[0].chunks[3].data,c.width*h+w) - 65
-                    // print(" {_id}")
-                    var _rect: float4 = float4((_id)*map.tilesets[0].tilewidth, (_id)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
-                    draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)-level_view_pos.x+float(c.x)+200., float(h*map.tilesets[0].tileheight)-level_view_pos.y+float(c.y),_rect)
+            if c.x < int(level_view_pos.x) + 10 && c.x > int(level_view_pos.x) - 10 && c.y < int(level_view_pos.y) + 30 && c.y > int(level_view_pos.y) - 30
+                for h in range(c.height)
+                    for w in range(c.width)
+                        var _id = c.data[c.width*h+w]
+                        print(" {_id}")
+                        var _rect: float4 = float4((_id)*map.tilesets[0].tilewidth, (_id)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
+                        draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)*1.5-level_view_pos.x+float(c.x)+200., float(h*map.tilesets[0].tileheight)*1.5-level_view_pos.y+float(c.y),_rect)
     
 
     set_font_size(48)
