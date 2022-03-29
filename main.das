@@ -3,6 +3,7 @@ require daslib/debug        // uncomment for debug in VS Code
 require daslib/media
 require math
 require map
+require fio
 
 ///////////////////////////////////////////////////////////////////////////////
 //  TYPES
@@ -16,7 +17,6 @@ struct Unit
     is_on_the_ground : bool
     pos : float2
     vel : float2
-    frame_count : int
     frame_idx : int
     time_in_cur_frame : float
 
@@ -62,14 +62,14 @@ var snd_step : SoundHandle
 
 var seed : int4
 
-var img_hero_idle_l : ImageHandle
-var img_hero_idle_r : ImageHandle
-var img_hero_jump_l : ImageHandle
-var img_hero_jump_r : ImageHandle
-var img_hero_walk_l : ImageHandle
-var img_hero_walk_r : ImageHandle
-var img_hero_lie_l : ImageHandle
-var img_hero_lie_r : ImageHandle
+var img_hero_idle_l : array<ImageHandle>
+var img_hero_idle_r : array<ImageHandle>
+var img_hero_jump_l : array<ImageHandle>
+var img_hero_jump_r : array<ImageHandle>
+var img_hero_run_l : array<ImageHandle>
+var img_hero_run_r : array<ImageHandle>
+var img_hero_lie_l : array<ImageHandle>
+var img_hero_lie_r : array<ImageHandle>
 
 var img_tree : ImageHandle
 
@@ -94,7 +94,6 @@ def add_unit(pos: float2)
     u.is_on_the_ground = false
     u.pos = pos
     u.vel = float2(0.f, 0.f)
-    u.frame_count = 1
     u.frame_idx = 0
     u.time_in_cur_frame = 0.f
     units |> push(u)
@@ -128,6 +127,19 @@ def space_to_level(p:float2): int2
     var int_p = int2(int(cell_p.x), int(ceil(cell_p.y)))
     return int_p
 
+def LoadAnimation(folder:string): array<ImageHandle>
+    var i = 1
+    var a: array<ImageHandle>
+    while true
+        var file = "{folder}/{i}.png"
+        if is_file_exists(file)
+            var h = create_managed_image(file)
+            a |> push(h)
+            i++
+        else
+            break
+    return <- a
+
 // 'initialize' runs once when game starts and every hot-reload
 [export]
 def initialize(is_hard_reload: bool)
@@ -142,7 +154,6 @@ def initialize(is_hard_reload: bool)
 
     add_unit(float2(100.f, 500.f))
     units[0].is_hero = true;
-    units[0].frame_count = 3;
     
     level_text = replace(level_text,"\n","")
     for y in range(0,level_size.y)
@@ -160,14 +171,14 @@ def initialize(is_hard_reload: bool)
 
     set_resolution(1920, 1080)
 
-    img_hero_idle_l = create_managed_image("hero/idle_9/1.png")
-    img_hero_idle_r = create_managed_image("hero/idle_3/1.png")
-    img_hero_jump_l = create_managed_image("hero/jump_9/1.png")
-    img_hero_jump_r = create_managed_image("hero/jump_3/1.png")
-    img_hero_walk_l = create_managed_image("hero/walk_9/1.png")
-    img_hero_walk_r = create_managed_image("hero/walk_3/1.png")
-    img_hero_lie_l = create_managed_image("hero/lie_9/1.png")
-    img_hero_lie_r = create_managed_image("hero/lie_3/1.png")
+    img_hero_idle_l <- LoadAnimation("hero/idle_9")
+    img_hero_idle_r <- LoadAnimation("hero/idle_3")
+    img_hero_jump_l <- LoadAnimation("hero/jump_up_9")
+    img_hero_jump_r <- LoadAnimation("hero/jump_up_3")
+    img_hero_run_l <- LoadAnimation("hero/run_shoot_9")
+    img_hero_run_r <- LoadAnimation("hero/run_shoot_3")
+    img_hero_lie_l <- LoadAnimation("hero/lie_9")
+    img_hero_lie_r <- LoadAnimation("hero/lie_3")
 
     img_tree = create_managed_image("enemy1/idle_9/1.png")
     
@@ -308,7 +319,7 @@ def act(dt: float)
         if !is_prev_trigger_pressed
             is_prev_trigger_pressed = true
             var bullet_vel = 1500.f * shoot_dir
-            var start_pos = units[0].pos + float2(48.f, -150.f)
+            var start_pos = units[0].pos + (shoot_dir.x > 0.0 ? float2(52.f, -140.f) : float2(-52.f, -140.f))
             if units[0].is_lie
                 start_pos += float2(150.f, 70.f)
             add_bullet(true, start_pos, bullet_vel + float2(units[0].vel.x, 0.f))
@@ -320,7 +331,7 @@ def act(dt: float)
         u.time_in_cur_frame += dt
         if u.time_in_cur_frame >= frame_duration
             u.time_in_cur_frame = 0.f
-            u.frame_idx = (u.frame_idx + 1) % u.frame_count
+            u.frame_idx++
 
     var screen_size = float2(float(get_screen_width()), float(get_screen_height()))
 
@@ -423,15 +434,15 @@ def draw
         var scr_pos = u.pos - level_view_pos
         if u.is_hero
             var vertical_num = 1
-            var img = u.is_face_right ? img_hero_idle_r : img_hero_idle_l
+            var img = u.is_face_right ? img_hero_idle_r[u.frame_idx%length(img_hero_idle_r)] : img_hero_idle_l[u.frame_idx%length(img_hero_idle_l)]
             if u.is_lie && u.vel.y == 0.f && u.vel.x == 0.f
-                img = u.is_face_right ? img_hero_lie_r : img_hero_lie_l
+                img = u.is_face_right ? img_hero_lie_r[u.frame_idx%length(img_hero_lie_r)] : img_hero_lie_l[u.frame_idx%length(img_hero_lie_l)]
                 img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
             elif (u.vel.y != 0.f)
-                img = u.is_face_right ? img_hero_jump_r :img_hero_jump_l
+                img = u.is_face_right ? img_hero_jump_r[u.frame_idx%length(img_hero_jump_r)] :img_hero_jump_l[u.frame_idx%length(img_hero_jump_l)]
                 img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
             elif (u.vel.y == 0.f && u.vel.x != 0.f)
-                img = u.is_face_right ? img_hero_walk_r : img_hero_walk_l
+                img = u.is_face_right ? img_hero_run_r[u.frame_idx%length(img_hero_run_r)] : img_hero_run_l[u.frame_idx%length(img_hero_run_l)]
                 img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
             else
                 img |> draw_image(scr_pos.x - float(img.width)*0.5, scr_pos.y - float(img.height))
