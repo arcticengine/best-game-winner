@@ -38,8 +38,10 @@ struct LevelCell
 var time_between_steps = 0.1f
 var frame_duration = 1.f / 15.f
 
+var fallspeed = 1.0
 var tile_size = 150.0
-var max_jump_height = 305.0
+var max_jump_height = 30500.0
+var speed = 2.0
 var level_size = int2(48,7)
 var level_text = "
    ####                   #   ##  #      ##    #
@@ -273,12 +275,12 @@ def act(dt: float)
     var do_lie = false
     if get_key(VK_A) || get_key(VK_LEFT)
         shoot_dir.x = -1.f
-        units[0].vel.x = -150.0*5.0
+        units[0].vel.x = -150.0*5.0*speed
         units[0].is_face_right = false
         do_step = units[0].vel.y == 0.f
     if get_key(VK_D) || get_key(VK_RIGHT)
         shoot_dir.x = 1.f
-        units[0].vel.x = 150.0*5.0
+        units[0].vel.x = 150.0*5.0*speed
         units[0].is_face_right = true
         do_step = units[0].vel.y == 0.f
     if get_key(VK_W) || get_key(VK_UP)
@@ -325,6 +327,11 @@ def act(dt: float)
             add_bullet(true, start_pos, bullet_vel + float2(units[0].vel.x, 0.f))
     else
         is_prev_trigger_pressed = false
+
+    // for testing
+    if get_key(VK_P)
+        // no fall mode
+        units[0].vel.y = 0.
 
     for u in units    
         move_unit(u, dt)
@@ -405,23 +412,26 @@ def draw
     
     enable_alpha_blend()
     var noo = 0
+    var clm = map.tilesets[0].columns
     for l in map.layers
         // if(noo != 0)
         //     break
-        print("\n{l.startx}X{l.startx}")
+        // print("\n{l.startx}X{l.startx}")
         for c in l.chunks
             // print("\n")
             // if noo != 0
             //     break
             // noo++
-            // if (c.x+l.startx)*map.tilesets[0].tilewidth < int(level_view_pos.x) + 1000 && (c.x+l.startx)*map.tilesets[0].tilewidth > int(level_view_pos.x) - 1000 && (c.y+l.starty)*map.tilesets[0].tilewidth < int(level_view_pos.y) + 1000 && (c.y+l.starty)*map.tilesets[0].tilewidth > int(level_view_pos.y) - 1000
+            if (c.x+l.startx)*map.tilesets[0].tilewidth < int(level_view_pos.x) + 1000 && (c.x+l.startx)*map.tilesets[0].tilewidth > int(level_view_pos.x) - 1000 && (c.y+l.starty)*map.tilesets[0].tilewidth < int(level_view_pos.y) + 1000 && (c.y+l.starty)*map.tilesets[0].tilewidth > int(level_view_pos.y) - 1000
 
-            for h in range(c.height)
-                for w in range(c.width)
-                    var _id = c.data[c.width*h+w]
-                    // print(" {_id}")
-                    var _rect: float4 = float4((_id)*map.tilesets[0].tilewidth, (_id)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
-                    draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)*1.-level_view_pos.x+float((c.x+l.startx)*map.tilesets[0].tilewidth), float(h*map.tilesets[0].tileheight)*1.-level_view_pos.y+float((c.y+l.starty)*map.tilesets[0].tileheight),_rect)
+                for h in range(c.height)
+                    for w in range(c.width)
+                        var _id = c.data[c.width*h+w]
+                        
+                        // print(" {_id}")
+                        _id = _id - 1 // 1 is tileset[0] firstgid
+                        var _rect: float4 = float4((_id-(_id/clm)*clm)*map.tilesets[0].tilewidth, (_id/clm)*map.tilesets[0].tileheight, map.tilesets[0].tilewidth, map.tilesets[0].tileheight)
+                        draw_image_region(map.tilesets[0].image, float(w*map.tilesets[0].tilewidth)*1.-level_view_pos.x+float((c.x+l.startx)*map.tilesets[0].tilewidth), float(h*map.tilesets[0].tileheight)*1.-level_view_pos.y+float((c.y+l.starty)*map.tilesets[0].tileheight),_rect)
     
 
     set_font_size(48)
